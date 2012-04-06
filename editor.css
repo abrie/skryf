@@ -110,8 +110,24 @@ a {
 	border-radius: 2px;
 }
 
+[contentEditor="true"] a.character:hover {
+	background: rgb(220,220,220);
+	border-radius: 2px;
+}
+
 a.inEditMode {
 	position: relative;
+}
+
+.characterEditor {
+	position: absolute;
+	top: 1em;
+	left: 0px;
+	width: 18em;
+    z-index: 200;
+	background: #C0C0C0;
+	border: 1px solid black;
+	border-radius: 3px;
 }
 
 .hrefEditor {
