@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<head>
+<title>editor</title>
+<meta charset='utf-8'/>
+<link rel="stylesheet" href="editor.css" type="text/css" />
+
+<script src="jquery-1.6.1.js"></script>
+<script>
+
+function updateUI() {
+	if( $("#content").attr('contentEditable') == 'true' ) {
+        $("#editor_state").text("editing");
+		toggle_menu_visibilities(true);
+	}
+	else {
+		$("#editor_state").text("viewing");
+		toggle_menu_visibilities(false);
+	}
+}
+
+function toggleEdit() {
+	if( $("#content").attr('contentEditable') == 'true' ) {
+		$("#content").attr('contentEditable', 'false');
+		close_all_hrefEditors();
+		unbind_all_hrefEditors();
+		cancel_allPending();
+		updateUI();
+	}
+	else {
+		$("#content").attr('contentEditable', 'true');
+		bind_all_hrefEditors();
+		updateUI();
+	}
+
+	updateUI();
+}
+
+function execCommand( command )
+{
+	document.execCommand( command, false, null );
+}
+
+function normalize_wiki_link(id)
+{
+	var link = $("a#"+id);
+	if( $(link).is("a.wikipedia") ) {
+		var wiki = "wikipedia";
+	} else if ( $(link).is("a.wiktionary") ) {
+		var wiki = "wiktionary";
+	} else {
+		return;
+	}
+
+	var lang = link.attr("lang");
+	var term = link.attr("term");
+	link.addClass("pending");
+	$.getJSON("http://"+lang+"."+wiki+".org/w/api.php?action=query&redirects&titles="+term+"&format=json&callback=?")
+	.success( function(data) {
+		var url = "http://"+lang+"."+wiki+".org/wiki/";
+		var title = term;
+		if( "pages" in data["query"] ) {
+			for(var page in data["query"]["pages"]) {
+				title = data["query"]["pages"][page]["title"];
+				break;
+			}
+		}
+		link.attr("href",url+title); 
+		link.removeClass("pending");
+	});
+}
+
+function opensearch_wiki_link(id, select)
+{
+	var element = $("#"+id);
+
+	if( $(element).is("a.wikipedia") ) {
+		var wiki = "wikipedia";
+	} else if ( $(element).is("a.wiktionary") ) {
+		var wiki = "wiktionary";
+	} else {
+		return;
+	}
+
+	var term = element.attr("term");
+	var lang = element.attr("lang");
+	$(select).find('option').remove();
+	$(select).addClass("pending");
+	$.getJSON("http://"+lang+"."+wiki+".org/w/api.php?action=opensearch&search="+term+"&format=json&callback=?")
+	.success( function(data) {
+		$(select).removeClass("pending");
+		var url = "http://"+lang+"."+wiki+".org/wiki/";
+		var results = data[1];
+		$.each( results, function( index, item ) {
+			$(select).append( $("<option>", { value : item }).text(item));
+		});
+		$(select).prepend( $("<option>", { value : "" }).text("("+results.length+" items)") );  
+	});
+}
+
+function uuid() {
+	var S4 = function() { return (((1+Math.random())*0x10000)|0).toString(16).substring(1); }
+	return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
+}
+
+function generate_hrefEditor( id )
+{
+	var element = $("#"+id);
+    var clone = element.clone(false);
+
+	if( $(element).is("a.wikipedia") ) {
+		var wiki = "wikipedia";
+	} else if ( $(element).is("a.wiktionary") ) {
+		var wiki = "wiktionary";
+	} else {
+		return;
+	}
+
+	var result = $("<div></div>").addClass("hrefEditor").attr("contentEditable","false");
+	
+	var update_href = function () {
+		href_input.val( "http://"+lang_input.val()+"."+wiki+".org/wiki/"+term_input.val() );
+		element.attr( "href", $(href_input).val() );
+	}
+
+	var cancel = $("<button>&#10005</button>");
+	cancel.click( function () {
+		result.remove();
+        element.replaceWith(clone);
+		bind_hrefEditor(id);
+		element.removeClass("inEditMode");
+		return false;
+	});
+
+	var accept = $("<button>&#10003</button>");
+	accept.click( function () {
+		update_href();
+		result.remove();
+		bind_hrefEditor(id);
+		element.removeClass("inEditMode");
+		return false;
+	});
+
+	var unlink = $("<button>&#8709</button>");
+	unlink.click( function () {
+		result.remove();
+		element.removeClass("inEditMode");
+		element.replaceWith( element.text() );
+		return false;
+	});
+
+	$(element).attr("lang", $(element).attr("lang") || "en" );
+	var lang_input = $("<input type='text'>").val( $(element).attr("lang") );
+	lang_input.attr( "size", 3 );
+	lang_input.change( function () {
+		element.attr( "lang", $(this).val() );
+		opensearch_wiki_link( id, term_select );
+		update_href();
+		return false;
+	});
+
+	$(element).attr("term", $(element).attr("term") || $(element).text() );
+	var term_input = $("<input type='text'>").val( $(element).attr("term") );
+	term_input.attr("size", 15 );
+	term_input.change( function () {
+		element.attr( "term", $(this).val() );
+		opensearch_wiki_link( id, term_select );
+		update_href();
+		return false;
+	});
+
+	var term_select = $("<select>");
+	term_select.change( function () {
+		if( $(this).val != "" ) {
+			term_input.val( $(this).val() );
+			update_href();
+		}
+		return false;
+	});
+
+	var href_input = $("<input type='text'>").val( element.attr("href") );
+	href_input.attr("size", 50 );
+	href_input.attr("readonly","readonly");
+	href_input.change( function () {
+		element.attr( "href", $(this).val() );
+		return false;
+	});
+
+	result.append( cancel );
+	result.append( accept );
+	result.append( unlink );
+	result.append( lang_input );
+	result.append( term_input );
+	result.append( term_select );
+	result.append( href_input );
+
+	opensearch_wiki_link( id, term_select );
+
+	return result;
+}
+
+function close_all_hrefEditors() {
+	$(".hrefEditor").each( function( index, hrefEditor ) {
+        bind_hrefEditor( $(hrefEditor).parent().attr("id") );
+		$(hrefEditor).parent().removeClass(".inEditMode");
+		$(hrefEditor).remove();
+	});
+}
+
+function cancel_allPending() {
+	$("a.pending").each( function( index, element ) {
+		$(element).removeClass("pending");
+	});
+}
+
+function show_hrefEditor()
+{
+	close_all_hrefEditors();
+	hrefEditor = generate_hrefEditor( $(this).attr('id') );
+	$(this).append( hrefEditor );
+	$(this).addClass("inEditMode");
+	$(this).unbind( 'click', show_hrefEditor );
+}
+
+function bind_hrefEditor( id )
+{
+	var link = $("a#"+id);
+	link.click( show_hrefEditor );
+}
+
+function unbind_hrefEditor( id )
+{
+	var link = $("a#"+id);
+	link.unbind("click", show_hrefEditor );
+}
+
+function unbind_all_hrefEditors()
+{
+	$("a.wikipedia, a.wiktionary").each( function( index, element ) {
+		var id = $(element).attr("id");
+		unbind_hrefEditor(id);
+	});
+}
+
+function bind_all_hrefEditors()
+{
+	$("a.wikipedia, a.wiktionary").each( function( index, element ) {
+		var id = $(element).attr("id");
+		bind_hrefEditor(id);
+	});
+}
+
+function selection_linkWikipedia()
+{
+	var id = uuid();
+	var selection = new String( window.getSelection() );
+	var link = $("<a class='wikipedia'>")
+		.attr("id", id)
+		.attr("lang", "en")
+		.attr("term", selection.toString() )
+		.attr("href", "#")
+		.text( selection.toString() );
+	var link_html = link.wrap("<div>").parent().html();
+	document.execCommand( "insertHtml", false, link_html ); 
+	normalize_wiki_link( id );
+	bind_hrefEditor(id);
+}
+
+function selection_linkWiktionary()
+{
+	var id = uuid();
+	var selection = new String( window.getSelection() );
+	var link = $("<a class='wiktionary'>")
+		.attr("id", id)
+		.attr("lang", "en")
+		.attr("term", selection.toString() )
+		.attr("href", "#")
+		.text( selection.toString() );
+	var link_html = link.wrap("<div>").parent().html();
+	document.execCommand( "insertHtml", false, link_html ); 
+	normalize_wiki_link( id );
+	bind_hrefEditor(id);
+}
+
+function selection_linkCharacter()
+{
+	var id = uuid();
+	var selection = new String( window.getSelection() );
+	var link = $("<a class='character'>")
+		.attr("id", id)
+		.attr("character",selection.toString())
+		.attr("href", "#")
+		.text( selection.toString() );
+	var link_html = link.wrap("<div>").parent().html();
+	document.execCommand( "insertHtml", false, link_html );
+}
+
+function set_title( title )
+{
+	$("#title").text(title);
+}
+
+function get_title()
+{
+	var title = $("#title")[0].innerText;
+	return title;
+}
+
+function save_content()
+{
+	var clone = $("#content").clone(false);
+
+	$("a.pending", clone).removeClass("pending");
+	$("a.inEditMode", clone).removeClass("inEditMode");
+	$(".hrefEditor", clone).remove();
+	$(clone).find("*").andSelf().unbind();
+	var content = clone.html();
+
+	if( content == "" ) {
+		return;
+	}
+
+	var title = get_title();
+	if( title == "") { 
+	  return; 
+	}
+
+	function put_content_failure( xhr, error, exception )
+	{
+		$("#editor_status").html('<div id="status_message"'>+error+'</div>');
+	}
+
+	function put_content_success( data, success_code, xhr )
+	{
+		var status_string;
+		if(xhr.status == 200) {
+			status_string = "saved";
+		}
+		else if(xhr.status == 201) {
+			status_string = "created";
+			load_directory();
+		}
+		else {
+			status_string = "xhr.status:"+xhr_status;
+		}
+
+		$("#editor_status").html('<div id="status_message">'+status_string+'</div>');
+		$("#status_message").fadeOut('slow', function() { $(this).remove(); } );
+	}
+
+	$.ajax( {
+		type: "PUT",
+		url: get_title()+"/content.html",
+		data: content,
+		error: put_content_failure,
+		success: put_content_success
+	});
+}
+
+function load_directory()
+{
+	$("#load_select").empty();
+	$("#load_select").unbind();
+	$("#load_select").append( $('<option value="">new document</option>') );
+	$.getJSON('/list', function(data) {
+		var items = [];
+		$.each(data, function(key, val) {
+			var item = $('<option value="' + val + '">' + val + '</option>');
+			$("#load_select").append(item);
+		});
+	});
+
+	var selection_changed = function() {
+		var selection = $("#load_select").val();
+		if( selection == "" ) {
+			set_title("untitled");
+			$("#content").text("contentless");
+		}
+		else
+		{
+			set_title( $("#load_select").val() );
+			load_content();
+		}
+	}
+
+	$("#load_select").change( selection_changed );
+}
+
+function load_content()
+{
+	function on_load_failure( xhr )
+	{
+		$("#editor_status").html('<div id="status_message"'>+xhr.status+'</div>');
+	}
+
+	function on_load_success()
+	{
+		$("#content").focus();
+		$("#content").html( $("#content").html() ); 
+		$("#editor_status").html('<div id="status_message">loaded</div>');
+		$("#status_message").fadeOut('slow', function() { $(this).remove(); } );
+	}
+
+	function load_event_handler( response, status, xhr ) {
+		if (status == "error") {
+			on_load_failure(xhr);
+		}
+		else {
+			on_load_success();
+		}
+	}
+
+	$("#content").load( get_title()+'/content.html', load_event_handler );
+}
+
+function check_connectivity()
+{
+	$.ajax( "ping" )
+		.fail( function() { $("[connected]").attr("connected","no"); } )
+		.success( function() { $("[connected]").attr("connected","yes"); } );
+}
+
+function initialize()
+{
+	setInterval( check_connectivity, 30000 );
+	updateUI();
+	load_directory();
+}
+
+$(document).ready( initialize );
+
+function toggle_menu_visibilities(visible)
+{
+	menuItems = [
+		"save",
+		"bold",
+		"italic",
+		"underline",
+		"unformat",
+		"subscript",
+		"superscript", 
+		"redo",
+		"undo",
+		"pedia",
+		"tionary",
+		"character"];
+	
+	function hide(element)
+	{
+		$(element).addClass("hidden");
+	}
+	
+	function show(element)
+	{
+		$(element).removeClass("hidden");
+	}
+
+	var action = visible ? show : hide;
+
+	for( var index in menuItems )
+	{
+		var menuElement = $(".toolbar li[menuitem='"+menuItems[index]+"']"); 
+		action(menuElement);
+	}
+}
+
+</script>
+</head>
+<body>
+	<div class="toolbar do_not_print">
+		<ul>
+			<li menuitem="load"><select id="load_select"></select></li>
+			<li menuitem="edit" visibility="hidden"><a href="#" onClick="toggleEdit(); return false;">edit</a></li>
+			<li menuitem="save"><a href="#" onClick="save_content(); return false;">save</a></li>
+			<li menuitem="bold"><a href="#" onClick="execCommand('bold'); return false;"><b>format</b></a></li>
+			<li menuitem="italic"><a href="#" onClick="execCommand('italic'); return false;"><i>format</i></a></li>
+			<li menuitem="underline"><a href="#" onClick="execCommand('underline'); return false;"><u>format</u></a></li>
+			<li menuitem="unformat"><a href="#" onClick="execCommand('removeFormat'); return false;"><strike>format</strike></a></li>
+			<li menuitem="subscript"><a href="#" onClick="execCommand('subscript'); return false;"><sub>format</sub></a></li>
+			<li menuitem="superscript"><a href="#" onClick="execCommand('superscript'); return false;"><sup>format</sup></a></li>
+			<li menuitem="redo"><a href="#" onClick="execCommand('redo'); return false;">redo</a></li>
+			<li menuitem="undo"><a href="#" onClick="execCommand('undo'); return false;">undo</a></li>
+			<li menuitem="pedia"><a href="#" onClick="selection_linkWikipedia(); return false;">pedia</a></li>
+			<li menuitem="tionary"><a href="#" onClick="selection_linkWiktionary(); return false;">tionary</a></li>
+			<li menuitem="character"><a href="#" onClick="selection_linkCharacter(); return false;">character</a></li>
+		</ul>
+		<div id="editor_state"></div>
+		<div style="clear:both"></div>
+		<div id="editor_status"></div>
+	</div>
+	<div connected="no" class="container">
+		<article>
+			<header><h1 contentEditable="true" spellcheck="false" id="title">untitled</h1></header>
+			<div id="content" contentEditable="false">contentless</div>
+			<footer></footer>
+		</article>
+	</div>
+	</div>
+</body>

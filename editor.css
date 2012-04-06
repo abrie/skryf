@@ -1,0 +1,150 @@
+body {
+	font: normal 16px/20px "Helvetica Neue", Helvetica, sans-serif;
+	background: rgb(237,237,237);
+	margin: 0;
+	padding: 0;
+}
+
+@media print {
+	.do_not_print {
+		display:none;
+	}
+}
+
+@-webkit-keyframes pending_animation {
+	0% { background: rgb(255,255,255); }
+	50% { background: rgb( 128, 128, 255 ); }
+	100% { background: rgb(255,255,255); color:white; border: black; }
+}
+
+div.toolbar {
+	position: fixed;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	z-index: 100;
+	background: white;
+	border-bottom: 1px solid black;
+	padding-top: 3px;
+}
+
+div.toolbar ul {
+	list-style-type: none;
+	display: inline;
+}
+
+div.toolbar li {
+	float: left;
+	margin-right: 0.165em;
+	margin-left: 0.165em;
+	white-space: nowrap;
+}
+
+div.toolbar li.hidden {
+	visibility: hidden;
+}
+
+div.toolbar a {
+	color: black;
+}
+
+div.toolbar a:hover {
+	background: black;
+	color: white;
+}
+
+div#editor_status {
+	position: absolute;
+	z-index: 200;
+	left: 0;
+}
+
+div#editor_state {
+	float:right;
+	font-variant: small-caps;
+}
+
+div#status_message {
+	text-align: center;
+	vertical-align: middle;
+	background: black;
+	color: white;
+	border-radius: 6px;
+	padding: 10px;
+}
+
+.pending {
+	-webkit-animation: pending_animation 0.5s;
+	-webkit-animation-iteration-count:infinite;
+	border-radius: 2px;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+[connected="no"] {
+	background: rgb(255,51,51);
+}
+
+[contentEditable="true"] a.wiktionary {
+	color: #8B4513;
+}
+
+[contentEditable="true"] a.wikipedia {
+	color: #12598B;
+}
+
+[contentEditable="true"] a.character {
+	color: #598112;
+}
+
+[contentEditable="true"] a.wiktionary:hover {
+	background: rgb(220,220,220);
+	border-radius: 2px;
+}
+
+[contentEditable="true"] a.wikipedia:hover {
+	background: rgb(220,220,220);
+	border-radius: 2px;
+}
+
+a.inEditMode {
+	position: relative;
+}
+
+.hrefEditor {
+	position: absolute;
+	top: 1em;
+	left: 0px;
+	width: 18em;
+    z-index: 200;
+	background: #C0C0C0;
+	border: 1px solid black;
+	border-radius: 3px;
+}
+
+article {
+	width: 5.32in;
+	margin: 50px auto 25px auto;
+	padding: 0.25in;
+	background: #fff;
+	color: black;
+	border-radius: 10px;
+	display: block;
+	text-align: justify;
+}
+
+article.header, article.footer {
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+[contentEditable="true"]:hover {
+	outline: 1px dotted #ccc;
+}
+
+[contentEditable]:focus {
+	outline: none;
+}
