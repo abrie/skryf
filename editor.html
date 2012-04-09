@@ -73,13 +73,17 @@ function normalize_wiki_link(id)
 }
 
 function find_characters(id, select)
-{
+{   
+	var uniques = [];
 	var element = $("#"+id);
 	$(select).find('option').remove();
 	$(select).addClass("pending");
 	$("a.character").each( function( index, element ) {
-		$(select).append( $("<option>", { value : $(element).attr("name") } ).text( $(element).attr("name") ) );
-		});
+		if( uniques.indexOf( $(element).attr("name") ) < 0 ) {
+			$(select).append( $("<option>", { value : $(element).attr("name") } ).text( $(element).attr("name") ) );
+			uniques.push( $(element).attr("name") );
+		}
+	});
 	$(select).prepend( $("<option>", { value : "" }).text("Character...") );
 	$(select).removeClass("pending");
 }
