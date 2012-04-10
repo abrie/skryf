@@ -202,9 +202,15 @@ function generate_hrefEditor( id )
 
 	var result = $("<div></div>").addClass("hrefEditor").attr("contentEditable","false");
 	
+	var update_preview = function() {
+		console.log("update preview:"+ $(element).attr("href") );
+		$("iframe.preview", element).attr("src", $(element).attr("href") );
+	}
+
 	var update_href = function () {
 		href_input.val( "http://"+lang_input.val()+"."+wiki+".org/wiki/"+term_input.val() );
 		element.attr( "href", $(href_input).val() );
+		update_preview();
 	}
 
 	var cancel = $("<button>&#10005</button>");
@@ -267,8 +273,12 @@ function generate_hrefEditor( id )
 	href_input.attr("readonly","readonly");
 	href_input.change( function () {
 		element.attr( "href", $(this).val() );
+		update_preview();
 		return false;
 	});
+
+	var href_iframe = $("<iframe>", { frameborder:"0", scrolling:"auto"} ).addClass("preview");
+	var preview_container = $("<div>").addClass("preview_container").append(href_iframe);
 
 	result.append( cancel );
 	result.append( accept );
@@ -277,7 +287,9 @@ function generate_hrefEditor( id )
 	result.append( term_input );
 	result.append( term_select );
 	result.append( href_input );
+	result.append( preview_container );
 
+	update_preview();
 	opensearch_wiki_link( id, term_select );
 
 	return result;
