@@ -450,6 +450,7 @@ function get_title()
 
 function save_content()
 {
+	$("#content").html($("#content").html().replace(/&nbsp;/g, ' '));
 	var clone = $("#content").clone(false);
 
 	$("a.pending", clone).removeClass("pending");
@@ -564,9 +565,10 @@ function check_connectivity()
 
 function initialize()
 {
-	setInterval( check_connectivity, 30000 );
 	updateUI();
 	load_directory();
+	check_connectivity();
+	setInterval( check_connectivity, 30000 );
 }
 
 $(document).ready( initialize );
