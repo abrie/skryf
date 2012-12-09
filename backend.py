@@ -38,7 +38,6 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	def split_query(self, path):
 		path = self.path.split('?',1)[0]
 		path = path.split('#',1)[0]
-		leading_character = '/' if path[0] == '/' else ''
 		path = os.path.normpath(urllib.unquote(path))
 		words = path.split('/')
 		return filter(None, words)
